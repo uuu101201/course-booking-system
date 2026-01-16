@@ -4,8 +4,12 @@ from datetime import datetime, timedelta
 import calendar
 import os
 app = Flask(__name__)
-
+#SECRET_KEY 改成環境變數
+import os
 app.secret_key = os.environ.get("SECRET_KEY", "dev")
+#管理者帳密改成環境變數
+ADMIN_ACCOUNT = os.environ.get("ADMIN_ACCOUNT", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "1234")
 
 db_url = os.environ.get("DATABASE_URL")
 if db_url and db_url.startswith("postgres://"):
@@ -102,6 +106,16 @@ def index():
         courses=course_dict,
         month_str=month_str
     )
+    
+#首頁查詢課程
+start = f"{year}-{month:02d}-01"
+last_day = calendar.monthrange(year, month)[1]
+end = f"{year}-{month:02d}-{last_day}"
+
+courses = Course.query.filter(
+    Course.course_date >= start,
+    Course.course_date <= end
+).all()
 
 # --------------------------------------
 # 報名頁：GET 顯示表單 / POST 送出報名
