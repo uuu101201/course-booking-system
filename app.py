@@ -2,33 +2,19 @@ from flask import Flask, render_template, request, redirect, session
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 import calendar
-
-# --------------------------------------
-# Flask App 基本設定
-# --------------------------------------
+import os
 app = Flask(__name__)
 
-# Session 用來記錄管理者是否登入（正式上線請改更長更複雜）
-app.secret_key = "change_this_secret_key_please"
-
-# SQLite 資料庫（會在專案資料夾生成 courses.db）
-import os
+app.secret_key = os.environ.get("SECRET_KEY", "dev")
 
 db_url = os.environ.get("DATABASE_URL")
-
-# Render 常見：postgres:// 需要改成 postgresql://
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-
-# --------------------------------------
-# 管理者帳密（正式上線請改掉）
-# --------------------------------------
-ADMIN_ACCOUNT = "admin"
-ADMIN_PASSWORD = "1234"
-
+db = SQLAlchemy(app)
 # --------------------------------------
 # 資料表：課程 Course
 # --------------------------------------
@@ -83,9 +69,16 @@ def index():
     cal = calendar.monthcalendar(year, month)
 
     # 撈出該月份所有課程（以 YYYY-MM 開頭）
-    courses = Course.query.filter(Course.course_date.startswith(month_str)).all()
+    start = f"{year}-{month:02d}-01"
+    last_day = calendar.monthrange(year, month)[1]
+    end = f"{year}-{month:02d}-{last_day}"
 
-    # course_dict：key=日(1~31), value=該天課程清單
+    courses = Course.query.filter(
+    Course.course_date >= start,
+    Course.course_date <= end
+    ).all()
+
+     # course_dict：key=日(1~31), value=該天課程清單
     course_dict = {}
 
     for c in courses:
@@ -291,6 +284,5 @@ def delete_course(course_id):
 # 程式入口：建立資料表並啟動
 # --------------------------------------
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True)
+    app.run()
+
